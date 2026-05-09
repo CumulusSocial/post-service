@@ -18,6 +18,7 @@ class PostOut(BaseModel):
     media_keys: list[str]
     media_urls: list[str]
     created_at: datetime
+    likes_count: int = 0
 
 
 class PostList(BaseModel):

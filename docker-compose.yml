@@ -15,27 +15,17 @@ services:
       timeout: 3s
       retries: 10
 
-  localstack:
-    image: localstack/localstack:3.8
-    environment:
-      SERVICES: sns,sqs,s3
-      DEBUG: "0"
-      DEFAULT_REGION: us-east-1
-    ports:
-      - "4566:4566"
-
   api:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
-      localstack:
-        condition: service_started
     environment:
       DATABASE_URL: postgresql+asyncpg://post:post@postgres:5432/post_db
       AUTH_BASE_URL: http://host.docker.internal:8001
       AWS_REGION: us-east-1
-      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ENDPOINT_URL: http://host.docker.internal:4566
+      S3_PUBLIC_ENDPOINT_URL: http://localhost:4566
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:post-events

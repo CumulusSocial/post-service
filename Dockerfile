@@ -3,7 +3,7 @@ FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    POETRY_VERSION=1.8.4 \
+    POETRY_VERSION=2.3.2 \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_NO_INTERACTION=1
 
@@ -15,8 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 COPY pyproject.toml poetry.lock* ./
 
-RUN poetry export --without-hashes --only main --output requirements.txt \
-    && pip install --prefix=/install --no-warn-script-location -r requirements.txt
+RUN poetry export --without-hashes --only main --all-extras --output requirements.txt \
+    && pip install --prefix=/install --ignore-installed --no-warn-script-location \
+        --timeout 120 --retries 5 -r requirements.txt
 
 # ─── Runtime stage ────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime

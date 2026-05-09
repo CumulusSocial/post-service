@@ -4,7 +4,7 @@ import base64
 import uuid
 from datetime import datetime
 
-from sqlalchemy import delete, desc, exists, select
+from sqlalchemy import delete, desc, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -91,6 +91,32 @@ async def unlike_post(
         delete(Like).where(Like.user_id == user_id, Like.post_id == post_id)
     )
     return result.rowcount > 0, post.author_id
+
+
+async def likes_count(session: AsyncSession, post_id: uuid.UUID) -> int:
+    return int(
+        await session.scalar(
+            select(func.count()).select_from(Like).where(Like.post_id == post_id)
+        )
+        or 0
+    )
+
+
+async def likes_count_many(
+    session: AsyncSession, post_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    if not post_ids:
+        return {}
+    stmt = (
+        select(Like.post_id, func.count())
+        .where(Like.post_id.in_(post_ids))
+        .group_by(Like.post_id)
+    )
+    rows = (await session.execute(stmt)).all()
+    counts = {pid: 0 for pid in post_ids}
+    for pid, c in rows:
+        counts[pid] = int(c)
+    return counts
 
 
 async def is_liked_by(

@@ -25,7 +25,9 @@ def _media(request: Request) -> MediaService:
     return request.app.state.media
 
 
-async def _to_out(post: Post, media: MediaService) -> PostOut:
+async def _to_out(
+    post: Post, media: MediaService, likes_count: int = 0
+) -> PostOut:
     urls = await media.presign_get_many(media_keys=list(post.media_keys))
     return PostOut(
         id=post.id,
@@ -34,6 +36,7 @@ async def _to_out(post: Post, media: MediaService) -> PostOut:
         media_keys=list(post.media_keys),
         media_urls=urls,
         created_at=post.created_at,
+        likes_count=likes_count,
     )
 
 
@@ -72,7 +75,8 @@ async def get_post_by_id(
         post = await posts_svc.get_post(session, post_id)
     except posts_svc.PostNotFound as e:
         raise HTTPException(status_code=404, detail="post not found") from e
-    return await _to_out(post, _media(request))
+    count = await posts_svc.likes_count(session, post.id)
+    return await _to_out(post, _media(request), count)
 
 
 @router.get("/posts/{user_id}", response_model=PostList)
@@ -88,7 +92,8 @@ async def list_user_posts(
         session, author_id=user_id, limit=limit, cursor=cursor
     )
     media = _media(request)
-    items = [await _to_out(p, media) for p in rows]
+    counts = await posts_svc.likes_count_many(session, [p.id for p in rows])
+    items = [await _to_out(p, media, counts.get(p.id, 0)) for p in rows]
     return PostList(items=items, next_cursor=next_cursor)
 
 

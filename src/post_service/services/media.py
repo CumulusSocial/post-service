@@ -4,11 +4,21 @@ import asyncio
 import mimetypes
 import uuid
 from dataclasses import dataclass
+from urllib.parse import urlparse, urlunparse
 
 from post_service.config import settings
 
 
 _ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+def _rewrite_for_public(url: str) -> str:
+    """Rewrite the S3 endpoint host to the public-facing one (dev only)."""
+    if not settings.s3_public_endpoint_url or not settings.aws_endpoint_url:
+        return url
+    public = urlparse(settings.s3_public_endpoint_url)
+    parts = urlparse(url)
+    return urlunparse(parts._replace(scheme=public.scheme, netloc=public.netloc))
 
 
 @dataclass(slots=True)
@@ -46,15 +56,20 @@ class MediaService:
             },
             ExpiresIn=settings.s3_presign_put_ttl,
         )
-        return Presigned(upload_url=url, media_key=key, expires_in=settings.s3_presign_put_ttl)
+        return Presigned(
+            upload_url=_rewrite_for_public(url),
+            media_key=key,
+            expires_in=settings.s3_presign_put_ttl,
+        )
 
     async def presign_get(self, *, media_key: str) -> str:
-        return await asyncio.to_thread(
+        url = await asyncio.to_thread(
             self._s3.generate_presigned_url,
             "get_object",
             Params={"Bucket": self._bucket, "Key": media_key},
             ExpiresIn=settings.s3_presign_get_ttl,
         )
+        return _rewrite_for_public(url)
 
     async def presign_get_many(self, *, media_keys: list[str]) -> list[str]:
         if not media_keys:

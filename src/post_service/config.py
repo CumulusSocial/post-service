@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     s3_bucket: str = "post-media"
     s3_presign_put_ttl: int = 300
     s3_presign_get_ttl: int = 900
+    # Public-facing endpoint for presigned URLs (browser must reach this).
+    # In prod (real S3), leave None. In dev with LocalStack, set to the host
+    # URL the browser sees, e.g. http://localhost:4566 — post-service rewrites
+    # the SDK-generated URL host before returning it to the client.
+    s3_public_endpoint_url: str | None = None
 
 
 @lru_cache
