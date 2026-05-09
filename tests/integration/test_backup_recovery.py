@@ -7,7 +7,6 @@ import uuid
 
 import pytest
 
-
 _PG_TOOLS_AVAILABLE = (
     shutil.which("pg_dump") is not None and shutil.which("pg_restore") is not None
 )

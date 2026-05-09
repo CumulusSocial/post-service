@@ -98,8 +98,8 @@ async def app_client(keypair, postgres_url) -> AsyncIterator[AsyncClient]:
     from sqlalchemy.pool import NullPool  # noqa: PLC0415
 
     from post_service import db as db_mod  # noqa: PLC0415
-    from post_service.models.base import Base  # noqa: PLC0415
     from post_service.models import follow, like, post  # noqa: F401, PLC0415
+    from post_service.models.base import Base  # noqa: PLC0415
 
     # Replace module-level engine with a NullPool one so connections aren't
     # carried across event loops between tests.

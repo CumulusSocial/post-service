@@ -8,7 +8,6 @@ from urllib.parse import urlparse, urlunparse
 
 from post_service.config import settings
 
-
 _ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
