@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPO: post-service
+  CLUSTER_NAME: capstone-cluster
+  K8S_NAMESPACE: platform
+  DEPLOYMENT_NAME: post-service
+  CONTAINER_NAME: api
+  SA_NAME: post
+  CONFIGMAP_NAME: post-config
+  SECRET_NAME: post-secret
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install postgresql-client (for backup/recovery test)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: install poetry
+        run: pipx install poetry==1.8.4
+
+      - name: install deps
+        run: poetry install --no-interaction
+
+      - name: lint
+        run: poetry run ruff check src tests
+
+      - name: test (unit + integration + backup/recovery)
+        run: poetry run pytest -q
+
+  build-and-deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: build & push
+        env:
+          REPO_URI: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build -t "$REPO_URI:$SHA" -t "$REPO_URI:latest" .
+          docker push "$REPO_URI:$SHA"
+          docker push "$REPO_URI:latest"
+
+      - name: configure kubectl
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: run alembic migration as a one-shot Job
+        env:
+          REPO_URI: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}
+          SHA: ${{ github.sha }}
+        run: |
+          JOB="${DEPLOYMENT_NAME}-migrate-${SHA::8}"
+          cat <<EOF | kubectl apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata: { name: $JOB, namespace: $K8S_NAMESPACE }
+          spec:
+            ttlSecondsAfterFinished: 600
+            backoffLimit: 3
+            template:
+              spec:
+                restartPolicy: OnFailure
+                serviceAccountName: $SA_NAME
+                containers:
+                  - name: alembic
+                    image: $REPO_URI:$SHA
+                    command: ["alembic", "upgrade", "head"]
+                    envFrom:
+                      - configMapRef: { name: $CONFIGMAP_NAME }
+                      - secretRef:    { name: $SECRET_NAME }
+          EOF
+          kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete \
+            "job/$JOB" --timeout=180s
+
+      - name: kubectl set image + rollout status
+        env:
+          REPO_URI: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}
+          SHA: ${{ github.sha }}
+        run: |
+          kubectl -n "$K8S_NAMESPACE" set image \
+            "deployment/$DEPLOYMENT_NAME" "$CONTAINER_NAME=$REPO_URI:$SHA"
+          kubectl -n "$K8S_NAMESPACE" rollout status \
+            "deployment/$DEPLOYMENT_NAME" --timeout=180s

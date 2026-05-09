@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "post-service"
+version = "0.1.0"
+description = "Post service: posts, likes, follows, S3 media presign, SNS event publishing"
+authors = ["abd-el-rahman-mahmoud <heibe8bs@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "post_service", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = { extras = ["standard"], version = "^0.32.0" }
+pydantic = { extras = ["email"], version = "^2.9.0" }
+pydantic-settings = "^2.6.0"
+sqlalchemy = { extras = ["asyncio"], version = "^2.0.36" }
+asyncpg = "^0.30.0"
+alembic = "^1.14.0"
+python-jose = { extras = ["cryptography"], version = "^3.3.0" }
+structlog = "^24.4.0"
+httpx = "^0.27.2"
+boto3 = "^1.35.0"
+botocore = "^1.35.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+ruff = "^0.7.0"
+testcontainers = { extras = ["postgres", "localstack"], version = "^4.8.0" }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
