@@ -51,7 +51,6 @@ class MediaService:
                 "Bucket": self._bucket,
                 "Key": key,
                 "ContentType": content_type,
-                "ContentLength": size_bytes,
             },
             ExpiresIn=settings.s3_presign_put_ttl,
         )
@@ -80,11 +79,14 @@ def make_s3_client():
     import boto3
     from botocore.config import Config
 
+    endpoint_url = settings.aws_endpoint_url or \
+        f"https://s3.{settings.aws_region}.amazonaws.com"
+
     cfg = Config(signature_version="s3v4", region_name=settings.aws_region)
     return boto3.client(
         "s3",
         region_name=settings.aws_region,
-        endpoint_url=settings.aws_endpoint_url,
+        endpoint_url=endpoint_url,
         aws_access_key_id=settings.aws_access_key_id,
         aws_secret_access_key=settings.aws_secret_access_key,
         config=cfg,

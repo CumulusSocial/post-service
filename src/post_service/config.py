@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     jwt_issuer: str = "auth-service"
     jwks_refresh_seconds: int = 600
 
-    aws_region: str = "us-east-1"
+    aws_region: str = "eu-south-1"
     aws_endpoint_url: str | None = None  # set to LocalStack URL in dev
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None

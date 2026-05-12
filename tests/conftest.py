@@ -88,7 +88,7 @@ async def app_client(keypair, postgres_url) -> AsyncIterator[AsyncClient]:
     os.environ["DATABASE_URL"] = postgres_url
     os.environ["AUTH_BASE_URL"] = "http://auth.fake"
     os.environ["JWT_ISSUER"] = "auth-service"
-    os.environ["SNS_TOPIC_ARN"] = "arn:aws:sns:us-east-1:000000000000:post-events"
+    os.environ["SNS_TOPIC_ARN"] = "arn:aws:sns:eu-south-1:000000000000:post-events"
     os.environ["S3_BUCKET"] = "test-bucket"
 
     from post_service.config import get_settings  # noqa: PLC0415
@@ -127,7 +127,7 @@ async def app_client(keypair, postgres_url) -> AsyncIterator[AsyncClient]:
 
     async with app.router.lifespan_context(app):
         # override after lifespan started
-        app.state.sns = SNSPublisher(fake_sns, "arn:aws:sns:us-east-1:000000000000:post-events")
+        app.state.sns = SNSPublisher(fake_sns, "arn:aws:sns:eu-south-1:000000000000:post-events")
         app.state.media = MediaService(fake_s3, "test-bucket")
         app.state.fake_sns = fake_sns
         transport = ASGITransport(app=app)
