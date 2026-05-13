@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: eu-south-1
   ECR_REPO: post-service
-  CLUSTER_NAME: capstone-cluster
+  CLUSTER_NAME: cumulus-cluster
   K8S_NAMESPACE: platform
   DEPLOYMENT_NAME: post-service
   CONTAINER_NAME: api
